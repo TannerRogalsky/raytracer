@@ -1,6 +1,7 @@
 use glutin::{self, PossiblyCurrent};
 
 use std::ffi::CStr;
+use std::convert::TryInto;
 
 pub mod gl {
     pub use self::Gles2 as Gl;
@@ -119,6 +120,26 @@ pub fn load(gl_context: &glutin::Context<PossiblyCurrent>) -> Gl {
 }
 
 impl Gl {
+    pub fn new_texture(&self, pixels: &Vec<u8>, width: usize, height: usize) -> u32 {
+        unsafe {
+            let mut texture = 0u32;
+            self.gl.GenTextures(1, &mut texture as *mut u32);
+            self.write_pixels(texture, pixels, width, height);
+            self.gl.TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR.try_into().unwrap());
+            self.gl.TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR.try_into().unwrap());
+            self.gl.TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE.try_into().unwrap());
+            self.gl.TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE.try_into().unwrap());
+            texture
+        }
+    }
+
+    pub fn write_pixels(&self, texture: u32, pixels: &Vec<u8>, width: usize, height: usize) {
+        unsafe {
+            self.gl.BindTexture(gl::TEXTURE_2D, texture);
+            self.gl.TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA.try_into().unwrap(), width.try_into().unwrap(), height.try_into().unwrap(), 0, gl::RGB, gl::UNSIGNED_BYTE, pixels.as_ptr() as *const std::ffi::c_void);
+        }
+    }
+
     pub fn draw_frame(&self, color: [f32; 4]) {
         unsafe {
             self.gl.ClearColor(color[0], color[1], color[2], color[3]);
@@ -144,6 +165,7 @@ attribute vec2 position;
 attribute vec3 color;
 
 varying vec3 v_color;
+varying vec2 v_tex;
 
 void main() {
     gl_Position = vec4(position, 0.0, 1.0);
@@ -156,9 +178,12 @@ const FS_SRC: &'static [u8] = b"
 precision mediump float;
 
 varying vec3 v_color;
+varying vec2 v_tex;
+
+uniform sampler2D _tex0_;
 
 void main() {
-    gl_FragColor = vec4(v_color, 1.0);
+    gl_FragColor = vec4(texture2D(_tex0_, v_tex).rgb * v_color, 1.0);
 }
 \0";
 

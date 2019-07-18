@@ -5,11 +5,10 @@ use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::WindowBuilder;
 use glutin::{ContextBuilder, WindowedContext, PossiblyCurrent};
 
-fn num_pixels(windowed_context: &WindowedContext<PossiblyCurrent>) -> usize {
-    let dpi_factor =
-        windowed_context.window().hidpi_factor();
+fn inner_size(windowed_context: &WindowedContext<PossiblyCurrent>) -> (usize, usize) {
+    let dpi_factor = windowed_context.window().hidpi_factor();
     let size = windowed_context.window().inner_size().to_physical(dpi_factor);
-    (size.width * size.height) as usize
+    (size.width as usize, size.height as usize)
 }
 
 fn main() {
@@ -27,22 +26,33 @@ fn main() {
     );
 
     let gl = support::load(&windowed_context.context());
-    let mut pixels = vec![num_pixels(&windowed_context)];
+
+    let (width, height) = inner_size(&windowed_context);
+    let mut pixels : Vec<u8> = Vec::new();
+    pixels.resize(width * height * 3, 0u8);
+    let texture = gl.new_texture(&pixels, width, height);
+    let mut frame = 0usize;
 
     el.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
+        frame += 1;
 
         match event {
             Event::LoopDestroyed => return,
             Event::WindowEvent { ref event, .. } => match event {
                 WindowEvent::Resized(logical_size) => {
-                    let dpi_factor =
-                        windowed_context.window().hidpi_factor();
-                    windowed_context
-                        .resize(logical_size.to_physical(dpi_factor));
-                    pixels.resize(num_pixels(&windowed_context), 0);
+                    let dpi_factor = windowed_context.window().hidpi_factor();
+                    let size = logical_size.to_physical(dpi_factor);
+                    windowed_context.resize(size);
+                    pixels.resize(size.width as usize * size.height as usize * 3, 0);
                 }
                 WindowEvent::RedrawRequested => {
+                    println!("{}", (frame % 128) as u8);
+                    let (width, height) = inner_size(&windowed_context);
+                    for i in 0..pixels.len() {
+                        pixels[i] = (frame % 128) as u8;
+                    }
+                    gl.write_pixels(texture, &pixels, width, height);
                     gl.draw_frame([1.0, 0.5, 0.7, 1.0]);
                     windowed_context.swap_buffers().unwrap();
                 }
