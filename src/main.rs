@@ -1,9 +1,12 @@
 mod support;
+mod ray;
 
 use glutin::event::{Event, WindowEvent, VirtualKeyCode};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::WindowBuilder;
 use glutin::{ContextBuilder, PossiblyCurrent, WindowedContext};
+use crate::ray::Ray;
+use cgmath::{Vector3, vec3, InnerSpace};
 
 fn inner_size(windowed_context: &WindowedContext<PossiblyCurrent>) -> (usize, usize) {
     let dpi_factor = windowed_context.window().hidpi_factor();
@@ -22,16 +25,59 @@ pub struct Pixel {
     b: u8,
 }
 
+type Vecf = Vector3<f64>;
+
+fn unit_vector(v: &Vecf) -> Vecf {
+    v / v.magnitude()
+}
+
+fn hit_sphere(center: &Vecf, radius: f64, r: &Ray<f64>) -> f64 {
+    let oc: Vecf = r.origin() - center;
+    let a = r.direction().dot(r.direction().to_owned());
+    let b = 2.0 * oc.dot(r.direction().to_owned());
+    let c = oc.dot(oc) - radius * radius;
+    let discriminant = b * b - 4.0 * a * c;
+    if discriminant < 0.0 {
+        -1.0
+    } else {
+        (-b - discriminant.sqrt()) / (2.0 * a)
+    }
+}
+
+fn color(r: &Ray<f64>) -> Vecf {
+    {
+        let sphere_center = vec3(0.0, 0.0, -1.0);
+        let t= hit_sphere(&sphere_center, 0.5, r);
+        if t > 0.0 {
+            let v = r.point_at_parameter(t) - vec3(0.0, 0.0, -1.0);
+            let n = unit_vector(&v);
+            return vec3(n.x + 1.0, n.y + 1.0, n.z + 1.0) * 0.5;
+        }
+    }
+    let unit_direction = unit_vector(r.direction());
+    let t = 0.5 * (unit_direction.y + 1.0);
+    (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0)
+}
+
 fn draw(p: &mut Vec<Pixel>, width: usize, height: usize) {
+    let lower_left_corner = vec3(-2.0, -1.0, -1.0);
+    let horizontal = vec3(4.0, 0.0, 0.0);
+    let vertical  = vec3(0.0, 2.0, 0.0);
+    let origin = vec3(0.0, 0.0, 0.0);
+
     let mut i = 0usize;
     for y in (0..height).rev() {
         for x in 0..width {
-            let r = (y as f64) / (height as f64);
-            let g = (x as f64) / (width as f64);
-            let b = 0.2;
-            p[i].r = (r * 255.99) as u8;
-            p[i].g = (g * 255.99) as u8;
-            p[i].b = (b * 255.99) as u8;
+            let u = (x as f64) / (width as f64);
+            let v = (y as f64) / (height as f64);
+
+            let r = Ray::new(origin, lower_left_corner + horizontal * u + vertical * v);
+            let col = color(&r);
+
+            p[i].r = (col.x * 255.99) as u8;
+            p[i].g = (col.y * 255.99) as u8;
+            p[i].b = (col.z * 255.99) as u8;
+
             i += 1;
         }
     }
@@ -61,7 +107,7 @@ fn main() {
     pixels.resize(width * height, Pixel::default());
     draw(&mut pixels, width, height);
     let texture = gl.new_texture(&pixels, width, height);
-//    gl.write_pixels(texture, &pixels, width, height);
+    gl.write_pixels(texture, &pixels, width, height);
     windowed_context.swap_buffers().unwrap();
 
     el.run(move |event, _, control_flow| {
