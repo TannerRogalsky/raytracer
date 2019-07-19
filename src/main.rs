@@ -1,6 +1,6 @@
 mod support;
 
-use glutin::event::{Event, WindowEvent};
+use glutin::event::{Event, WindowEvent, VirtualKeyCode};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::WindowBuilder;
 use glutin::{ContextBuilder, PossiblyCurrent, WindowedContext};
@@ -86,6 +86,13 @@ fn main() {
                     windowed_context.swap_buffers().unwrap();
                 }
                 WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                WindowEvent::KeyboardInput {input, ..} => {
+                    if let Some(key) = input.virtual_keycode {
+                        if key == VirtualKeyCode::Escape {
+                            *control_flow = ControlFlow::Exit
+                        }
+                    }
+                },
                 _ => (),
             },
             _ => (),
