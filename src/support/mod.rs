@@ -12,6 +12,7 @@ pub struct Gl {
     pub gl: gl::Gl,
 }
 
+#[cfg(windows)]
 extern "system" fn dbg_callback(
     source: gl::types::GLenum,
     etype: gl::types::GLenum,
@@ -35,6 +36,7 @@ extern "system" fn dbg_callback(
 pub fn load(gl_context: &glutin::Context<PossiblyCurrent>) -> Gl {
     let gl = gl::Gl::load_with(|ptr| gl_context.get_proc_address(ptr) as *const _);
 
+    #[cfg(windows)]
     unsafe {
         gl.Enable(gl::DEBUG_OUTPUT);
         gl.DebugMessageCallback(dbg_callback, std::ptr::null());
