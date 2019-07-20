@@ -1,11 +1,9 @@
-mod support;
-mod ray;
+use raytracer_in_a_weekend::*;
 
 use glutin::event::{Event, WindowEvent, VirtualKeyCode};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::WindowBuilder;
 use glutin::{ContextBuilder, PossiblyCurrent, WindowedContext};
-use crate::ray::Ray;
 use cgmath::{Vector3, vec3, InnerSpace};
 
 fn inner_size(windowed_context: &WindowedContext<PossiblyCurrent>) -> (usize, usize) {
@@ -15,14 +13,6 @@ fn inner_size(windowed_context: &WindowedContext<PossiblyCurrent>) -> (usize, us
         .inner_size()
         .to_physical(dpi_factor);
     (size.width as usize, size.height as usize)
-}
-
-#[repr(C)]
-#[derive(Default, Clone, Debug)]
-pub struct Pixel {
-    r: u8,
-    g: u8,
-    b: u8,
 }
 
 type Vecf = Vector3<f64>;
