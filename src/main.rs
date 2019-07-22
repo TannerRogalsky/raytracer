@@ -16,35 +16,25 @@ fn inner_size(windowed_context: &WindowedContext<PossiblyCurrent>) -> (usize, us
 }
 
 type Vecf = Vector3<f64>;
-
-fn unit_vector(v: &Vecf) -> Vecf {
-    v / v.magnitude()
-}
-
-fn hit_sphere(center: &Vecf, radius: f64, r: &Ray<f64>) -> f64 {
-    let oc: Vecf = r.origin() - center;
-    let a = r.direction().dot(r.direction().to_owned());
-    let b = 2.0 * oc.dot(r.direction().to_owned());
-    let c = oc.dot(oc) - radius * radius;
-    let discriminant = b * b - 4.0 * a * c;
-    if discriminant < 0.0 {
-        -1.0
+fn hit_sphere(center: &Vecf, radius: f64, r: &Ray<f64>) -> Option<HitRecord<f64>> {
+    let mut ht = HitRecord::default();
+    let s = Sphere::new(center.to_owned(), radius);
+    if s.hit(r, 0.0..std::f64::MAX, &mut ht) {
+        Some(ht)
     } else {
-        (-b - discriminant.sqrt()) / (2.0 * a)
+        None
     }
 }
 
 fn color(r: &Ray<f64>) -> Vecf {
     {
         let sphere_center = vec3(0.0, 0.0, -1.0);
-        let t = hit_sphere(&sphere_center, 0.5, r);
-        if t > 0.0 {
-            let v = r.point_at_parameter(t) - vec3(0.0, 0.0, -1.0);
-            let n = unit_vector(&v);
+        if let Some(v) = hit_sphere(&sphere_center, 0.5, r) {
+            let n = v.get_normal();
             return vec3(n.x + 1.0, n.y + 1.0, n.z + 1.0) * 0.5;
         }
     }
-    let unit_direction = unit_vector(r.direction());
+    let unit_direction = r.direction().normalize();
     let t = 0.5 * (unit_direction.y + 1.0);
     (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0)
 }

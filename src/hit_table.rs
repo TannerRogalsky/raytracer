@@ -3,17 +3,17 @@ extern crate cgmath;
 use cgmath::{Vector3, Zero};
 
 pub struct HitRecord<T> {
-    t: f64,
+    t: T,
     p: Vector3<T>,
     normal: Vector3<T>,
 }
 
-impl<T> HitRecord<T> {
-    pub fn get_t(&self) -> f64 {
+impl<T: std::marker::Copy> HitRecord<T> {
+    pub fn get_t(&self) -> T {
         self.t
     }
 
-    pub fn set_t(&mut self, t: f64) {
+    pub fn set_t(&mut self, t: T) {
         self.t = t;
     }
 
@@ -37,7 +37,7 @@ impl<T> HitRecord<T> {
 impl<T: cgmath::BaseNum> Default for HitRecord<T> {
     fn default() -> Self {
         Self {
-            t: 0.0,
+            t: T::zero(),
             p: Vector3::zero(),
             normal: Vector3::zero(),
         }
@@ -45,16 +45,14 @@ impl<T: cgmath::BaseNum> Default for HitRecord<T> {
 }
 
 pub trait HitTable<T> {
-    type Vector3 = cgmath::Vector3<T>;
-
-    fn hit(&self, r: &super::ray::Ray<T>, t: std::ops::Range<f64>, rec: &mut HitRecord<T>) -> bool;
+    fn hit(&self, r: &super::ray::Ray<T>, t: std::ops::Range<T>, rec: &mut HitRecord<T>) -> bool;
 }
 
 struct HitTableList<T> {
     list: std::vec::Vec<Box<HitTable<T>>>,
 }
 
-//impl<T: cgmath::BaseNum> HitTableList<T> {
+//impl<T: cgmath::BaseFloat> HitTableList<T> {
 //    pub fn new() -> Self {
 //        HitTableList { list: vec![] }
 //    }
@@ -62,7 +60,7 @@ struct HitTableList<T> {
 //    pub fn hit(
 //        &self,
 //        r: &super::ray::Ray<T>,
-//        t: std::ops::Range<f64>,
+//        t: std::ops::Range<T>,
 //        rec: &mut HitRecord<T>,
 //    ) -> bool {
 //        let mut temp_rec = HitRecord::default();

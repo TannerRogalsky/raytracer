@@ -7,3 +7,4 @@ pub mod support;
 pub use hit_table::{HitRecord, HitTable};
 pub use pixel::Pixel;
 pub use ray::Ray;
+pub use sphere::Sphere;
