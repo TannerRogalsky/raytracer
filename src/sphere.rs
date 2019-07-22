@@ -15,8 +15,16 @@ impl<T> Sphere<T> {
     }
 }
 
+impl<T: cgmath::BaseNum> Sphere<T> {
+    pub fn hit_record(&self, ray: &Ray<T>, t: T) -> HitRecord<T> {
+        let p = ray.point_at_parameter(t);
+        let normal = (p - self.center) / self.radius;
+        HitRecord::new(t, p, normal)
+    }
+}
+
 impl<T: cgmath::BaseFloat> HitTable<T> for Sphere<T> {
-    fn hit(&self, r: &Ray<T>, t: Range<T>, rec: &mut HitRecord<T>) -> bool {
+    fn hit(&self, r: &Ray<T>, t: Range<T>, _rec: &HitRecord<T>) -> Option<HitRecord<T>> {
         let oc = r.origin() - self.center;
         let a = r.direction().magnitude2();
         let b = oc.dot(r.direction().to_owned());
@@ -26,19 +34,13 @@ impl<T: cgmath::BaseFloat> HitTable<T> for Sphere<T> {
         if discriminant > T::zero() {
             let temp = (-b - discriminant.sqrt()) / a;
             if t.contains(&temp) {
-                rec.set_t(temp);
-                rec.set_p(r.point_at_parameter(rec.get_t()));
-                rec.set_normal((rec.get_p() - self.center) / self.radius);
-                return true;
+                return Some(self.hit_record(r, temp));
             }
             let temp = (-b + discriminant.sqrt()) / a;
             if t.contains(&temp) {
-                rec.set_t(temp);
-                rec.set_p(r.point_at_parameter(rec.get_t()));
-                rec.set_normal((rec.get_p() - self.center) / self.radius);
-                return true;
+                return Some(self.hit_record(r, temp));
             }
         }
-        false
+        None
     }
 }

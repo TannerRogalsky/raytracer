@@ -2,6 +2,7 @@ extern crate cgmath;
 
 use cgmath::{Vector3, Zero};
 
+#[derive(Copy, Clone)]
 pub struct HitRecord<T> {
     t: T,
     p: Vector3<T>,
@@ -9,6 +10,10 @@ pub struct HitRecord<T> {
 }
 
 impl<T: std::marker::Copy> HitRecord<T> {
+    pub fn new(t: T, p: Vector3<T>, normal: Vector3<T>) -> Self {
+        Self { t, p, normal }
+    }
+
     pub fn get_t(&self) -> T {
         self.t
     }
@@ -45,35 +50,47 @@ impl<T: cgmath::BaseNum> Default for HitRecord<T> {
 }
 
 pub trait HitTable<T> {
-    fn hit(&self, r: &super::ray::Ray<T>, t: std::ops::Range<T>, rec: &mut HitRecord<T>) -> bool;
+    fn hit(
+        &self,
+        r: &super::ray::Ray<T>,
+        t: std::ops::Range<T>,
+        rec: &HitRecord<T>,
+    ) -> Option<HitRecord<T>>;
 }
 
-struct HitTableList<T> {
+pub struct HitTableList<T> {
     list: std::vec::Vec<Box<HitTable<T>>>,
 }
 
-//impl<T: cgmath::BaseFloat> HitTableList<T> {
-//    pub fn new() -> Self {
-//        HitTableList { list: vec![] }
-//    }
-//
-//    pub fn hit(
-//        &self,
-//        r: &super::ray::Ray<T>,
-//        t: std::ops::Range<T>,
-//        rec: &mut HitRecord<T>,
-//    ) -> bool {
-//        let mut temp_rec = HitRecord::default();
-//        let mut hit_anything = false;
-//        let mut closest_so_far = t.end;
-//
-//        for hit_table in self.list {
-//            if hit_table.hit(r, t.start..closest_so_far, &mut temp_rec) {
-//                hit_anything = true;
-//                closest_so_far = temp_rec.get_t();
-//                *rec = temp_rec;
-//            }
-//        }
-//        hit_anything
-//    }
-//}
+impl<T> HitTableList<T> {
+    pub fn new() -> Self {
+        HitTableList { list: vec![] }
+    }
+
+    pub fn add(&mut self, ht: Box<HitTable<T>>) {
+        self.list.push(ht)
+    }
+}
+
+impl<T> HitTable<T> for HitTableList<T>
+where
+    T: cgmath::BaseNum + cgmath::Bounded,
+{
+    fn hit(
+        &self,
+        r: &super::ray::Ray<T>,
+        t: std::ops::Range<T>,
+        rec: &HitRecord<T>,
+    ) -> Option<HitRecord<T>> {
+        self.list
+            .iter()
+            .fold(
+                (None, T::max_value(), *rec),
+                |(hc, closest_so_far, rec), ht| match ht.hit(r, t.start..closest_so_far, &rec) {
+                    None => (hc, closest_so_far, rec),
+                    Some(rec) => (Some(rec), rec.get_t(), rec),
+                },
+            )
+            .0
+    }
+}

@@ -15,31 +15,22 @@ fn inner_size(windowed_context: &WindowedContext<PossiblyCurrent>) -> (usize, us
     (size.width as usize, size.height as usize)
 }
 
-type Vecf = Vector3<f64>;
-fn hit_sphere(center: &Vecf, radius: f64, r: &Ray<f64>) -> Option<HitRecord<f64>> {
-    let mut ht = HitRecord::default();
-    let s = Sphere::new(center.to_owned(), radius);
-    if s.hit(r, 0.0..std::f64::MAX, &mut ht) {
-        Some(ht)
-    } else {
-        None
-    }
-}
-
-fn color(r: &Ray<f64>) -> Vecf {
-    {
-        let sphere_center = vec3(0.0, 0.0, -1.0);
-        if let Some(v) = hit_sphere(&sphere_center, 0.5, r) {
-            let n = v.get_normal();
-            return vec3(n.x + 1.0, n.y + 1.0, n.z + 1.0) * 0.5;
+fn color(r: &Ray<f64>, world: &HitTableList<f64>) -> Vector3<f64> {
+    let rec = HitRecord::default();
+    match world.hit(r, 0.0..std::f64::MAX, &rec) {
+        None => {
+            let unit_direction = r.direction().normalize();
+            let t = 0.5 * (unit_direction.y + 1.0);
+            (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0)
+        }
+        Some(hit) => {
+            let n = hit.get_normal();
+            vec3(n.x + 1.0, n.y + 1.0, n.z + 1.0) * 0.5
         }
     }
-    let unit_direction = r.direction().normalize();
-    let t = 0.5 * (unit_direction.y + 1.0);
-    (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0)
 }
 
-fn draw(p: &mut Vec<Pixel>, width: usize, height: usize) {
+fn draw(p: &mut Vec<Pixel>, width: usize, height: usize, world: &HitTableList<f64>) {
     let lower_left_corner = vec3(-2.0, -1.0, -1.0);
     let horizontal = vec3(4.0, 0.0, 0.0);
     let vertical = vec3(0.0, 2.0, 0.0);
@@ -52,7 +43,7 @@ fn draw(p: &mut Vec<Pixel>, width: usize, height: usize) {
             let v = (y as f64) / (height as f64);
 
             let r = Ray::new(origin, lower_left_corner + horizontal * u + vertical * v);
-            let col = color(&r);
+            let col = color(&r, world);
 
             p[i].r = (col.x * 255.99) as u8;
             p[i].g = (col.y * 255.99) as u8;
@@ -83,9 +74,15 @@ fn main() {
 
     let (width, height) = inner_size(&windowed_context);
     println!("Window inner size: {}, {}", width, height);
+
+    let mut world = HitTableList::new();
+    world.add(Box::new(Sphere::new(vec3(0.0, 0.0, -1.0), 0.5)));
+    world.add(Box::new(Sphere::new(vec3(0.0, -100.5, -1.0), 100.0)));
+
     let mut pixels: Vec<Pixel> = Vec::new();
     pixels.resize(width * height, Pixel::default());
-    draw(&mut pixels, width, height);
+    draw(&mut pixels, width, height, &world);
+
     let texture = gl.new_texture(&pixels, width, height);
     gl.write_pixels(texture, &pixels, width, height);
     gl.draw_frame([1.0, 0.5, 0.7, 1.0]);
@@ -107,7 +104,7 @@ fn main() {
                 }
                 WindowEvent::RedrawRequested => {
                     let (width, height) = inner_size(&windowed_context);
-                    draw(&mut pixels, width, height);
+                    draw(&mut pixels, width, height, &world);
                     gl.write_pixels(texture, &pixels, width, height);
                     gl.draw_frame([1.0, 0.5, 0.7, 1.0]);
                     windowed_context.swap_buffers().unwrap();
