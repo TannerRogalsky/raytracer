@@ -98,6 +98,7 @@ fn main() {
     draw(&mut pixels, width, height);
     let texture = gl.new_texture(&pixels, width, height);
     gl.write_pixels(texture, &pixels, width, height);
+    gl.draw_frame([1.0, 0.5, 0.7, 1.0]);
     windowed_context.swap_buffers().unwrap();
 
     el.run(move |event, _, control_flow| {

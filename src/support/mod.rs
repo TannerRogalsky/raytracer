@@ -93,7 +93,7 @@ pub fn load(gl_context: &glutin::Context<PossiblyCurrent>) -> Gl {
         }
 
         let pos_attrib = gl.GetAttribLocation(program, b"position\0".as_ptr() as *const _);
-//        let color_attrib = gl.GetAttribLocation(program, b"color\0".as_ptr() as *const _);
+        //        let color_attrib = gl.GetAttribLocation(program, b"color\0".as_ptr() as *const _);
         gl.VertexAttribPointer(
             pos_attrib as gl::types::GLuint,
             2,
@@ -102,16 +102,16 @@ pub fn load(gl_context: &glutin::Context<PossiblyCurrent>) -> Gl {
             5 * std::mem::size_of::<f32>() as gl::types::GLsizei,
             std::ptr::null(),
         );
-//        gl.VertexAttribPointer(
-//            color_attrib as gl::types::GLuint,
-//            3,
-//            gl::FLOAT,
-//            0,
-//            5 * std::mem::size_of::<f32>() as gl::types::GLsizei,
-//            (2 * std::mem::size_of::<f32>()) as *const () as *const _,
-//        );
+        //        gl.VertexAttribPointer(
+        //            color_attrib as gl::types::GLuint,
+        //            3,
+        //            gl::FLOAT,
+        //            0,
+        //            5 * std::mem::size_of::<f32>() as gl::types::GLsizei,
+        //            (2 * std::mem::size_of::<f32>()) as *const () as *const _,
+        //        );
         gl.EnableVertexAttribArray(pos_attrib as gl::types::GLuint);
-//        gl.EnableVertexAttribArray(color_attrib as gl::types::GLuint);
+        //        gl.EnableVertexAttribArray(color_attrib as gl::types::GLuint);
     }
 
     Gl { gl: gl }
