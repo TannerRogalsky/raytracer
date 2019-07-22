@@ -126,12 +126,12 @@ impl Gl {
             self.gl.TexParameteri(
                 gl::TEXTURE_2D,
                 gl::TEXTURE_MIN_FILTER,
-                gl::LINEAR.try_into().unwrap(),
+                gl::NEAREST.try_into().unwrap(),
             );
             self.gl.TexParameteri(
                 gl::TEXTURE_2D,
                 gl::TEXTURE_MAG_FILTER,
-                gl::LINEAR.try_into().unwrap(),
+                gl::NEAREST.try_into().unwrap(),
             );
             self.gl.TexParameteri(
                 gl::TEXTURE_2D,
