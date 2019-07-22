@@ -9,7 +9,7 @@ pub struct Ray<T> {
 
 impl<T: cgmath::BaseNum> Ray<T> {
     pub fn new(a: Vector3<T>, b: Vector3<T>) -> Self {
-        Ray {a, b}
+        Ray { a, b }
     }
 
     pub fn origin(&self) -> &Vector3<T> {

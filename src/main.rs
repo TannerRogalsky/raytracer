@@ -1,10 +1,10 @@
 use raytracer_in_a_weekend::*;
 
-use glutin::event::{Event, WindowEvent, VirtualKeyCode};
+use cgmath::{vec3, InnerSpace, Vector3};
+use glutin::event::{Event, VirtualKeyCode, WindowEvent};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::WindowBuilder;
 use glutin::{ContextBuilder, PossiblyCurrent, WindowedContext};
-use cgmath::{Vector3, vec3, InnerSpace};
 
 fn inner_size(windowed_context: &WindowedContext<PossiblyCurrent>) -> (usize, usize) {
     let dpi_factor = windowed_context.window().hidpi_factor();
@@ -37,7 +37,7 @@ fn hit_sphere(center: &Vecf, radius: f64, r: &Ray<f64>) -> f64 {
 fn color(r: &Ray<f64>) -> Vecf {
     {
         let sphere_center = vec3(0.0, 0.0, -1.0);
-        let t= hit_sphere(&sphere_center, 0.5, r);
+        let t = hit_sphere(&sphere_center, 0.5, r);
         if t > 0.0 {
             let v = r.point_at_parameter(t) - vec3(0.0, 0.0, -1.0);
             let n = unit_vector(&v);
@@ -52,7 +52,7 @@ fn color(r: &Ray<f64>) -> Vecf {
 fn draw(p: &mut Vec<Pixel>, width: usize, height: usize) {
     let lower_left_corner = vec3(-2.0, -1.0, -1.0);
     let horizontal = vec3(4.0, 0.0, 0.0);
-    let vertical  = vec3(0.0, 2.0, 0.0);
+    let vertical = vec3(0.0, 2.0, 0.0);
     let origin = vec3(0.0, 0.0, 0.0);
 
     let mut i = 0usize;
@@ -123,13 +123,13 @@ fn main() {
                     windowed_context.swap_buffers().unwrap();
                 }
                 WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                WindowEvent::KeyboardInput {input, ..} => {
+                WindowEvent::KeyboardInput { input, .. } => {
                     if let Some(key) = input.virtual_keycode {
                         if key == VirtualKeyCode::Escape {
                             *control_flow = ControlFlow::Exit
                         }
                     }
-                },
+                }
                 _ => (),
             },
             _ => (),
