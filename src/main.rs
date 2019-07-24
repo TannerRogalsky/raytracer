@@ -16,6 +16,17 @@ fn inner_size(windowed_context: &WindowedContext<PossiblyCurrent>) -> (usize, us
     (size.width as usize, size.height as usize)
 }
 
+fn rand_in_unit_sphere() -> Vector3<f64> {
+    let mut rng = rand::thread_rng();
+    loop {
+        let p =
+            vec3(rng.gen::<f64>(), rng.gen::<f64>(), rng.gen::<f64>()) * 2.0 - vec3(1.0, 1.0, 1.0);
+        if p.magnitude2() < 1.0 {
+            return p;
+        }
+    }
+}
+
 struct App {
     pixels: Vec<Pixel>,
     world: HitTableList<f64>,
@@ -25,25 +36,25 @@ struct App {
 
 impl App {
     fn color(&self, r: &Ray<f64>) -> Vector3<f64> {
-        let rec = HitRecord::default();
-        match self.world.hit(r, 0.0..std::f64::MAX, &rec) {
+        match self.world.hit(r, 0.001..std::f64::MAX) {
             None => {
                 let unit_direction = r.direction().normalize();
                 let t = 0.5 * (unit_direction.y + 1.0);
                 (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0)
             }
             Some(hit) => {
-                let n = hit.get_normal();
-                vec3(n.x + 1.0, n.y + 1.0, n.z + 1.0) * 0.5
+                let target = hit.get_p() + hit.get_normal() + rand_in_unit_sphere();
+                let ray = Ray::new(*hit.get_p(), target - hit.get_p());
+                self.color(&ray) * 0.5
             }
         }
     }
 
     fn draw(&mut self, width: usize, height: usize) {
+        const AA_STEPS: usize = 100;
         let mut i = 0usize;
         for y in (0..height).rev() {
             for x in 0..width {
-                const AA_STEPS: usize = 10;
                 let col = (0..AA_STEPS).fold(vec3(0.0, 0.0, 0.0), |acc, _i| {
                     let u = (x as f64 + self.rng.gen::<f64>()) / (width as f64);
                     let v = (y as f64 + self.rng.gen::<f64>()) / (height as f64);
@@ -52,9 +63,9 @@ impl App {
                     acc + self.color(&r)
                 }) / AA_STEPS as f64;
 
-                self.pixels[i].r = (col.x * 255.99) as u8;
-                self.pixels[i].g = (col.y * 255.99) as u8;
-                self.pixels[i].b = (col.z * 255.99) as u8;
+                self.pixels[i].r = (col.x.sqrt() * 255.99) as u8;
+                self.pixels[i].g = (col.y.sqrt() * 255.99) as u8;
+                self.pixels[i].b = (col.z.sqrt() * 255.99) as u8;
 
                 i += 1;
             }
