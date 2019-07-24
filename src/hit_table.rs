@@ -50,12 +50,7 @@ impl<T: cgmath::BaseNum> Default for HitRecord<T> {
 }
 
 pub trait HitTable<T> {
-    fn hit(
-        &self,
-        r: &super::ray::Ray<T>,
-        t: std::ops::Range<T>,
-        rec: &HitRecord<T>,
-    ) -> Option<HitRecord<T>>;
+    fn hit(&self, r: &super::ray::Ray<T>, t: std::ops::Range<T>) -> Option<HitRecord<T>>;
 }
 
 pub struct HitTableList<T> {
@@ -72,25 +67,16 @@ impl<T> HitTableList<T> {
     }
 }
 
-impl<T> HitTable<T> for HitTableList<T>
-where
-    T: cgmath::BaseNum + cgmath::Bounded,
-{
-    fn hit(
-        &self,
-        r: &super::ray::Ray<T>,
-        t: std::ops::Range<T>,
-        rec: &HitRecord<T>,
-    ) -> Option<HitRecord<T>> {
-        self.list
-            .iter()
-            .fold(
-                (None, T::max_value(), *rec),
-                |(hc, closest_so_far, rec), ht| match ht.hit(r, t.start..closest_so_far, &rec) {
-                    None => (hc, closest_so_far, rec),
-                    Some(rec) => (Some(rec), rec.get_t(), rec),
-                },
-            )
-            .0
+impl<T: cgmath::BaseNum> HitTable<T> for HitTableList<T> {
+    fn hit(&self, r: &super::ray::Ray<T>, t: std::ops::Range<T>) -> Option<HitRecord<T>> {
+        let mut closest_so_far = t.end;
+        let mut hit = None;
+        for ht in self.list.iter() {
+            if let Some(hc) = ht.hit(r, t.start..closest_so_far) {
+                hit = Some(hc);
+                closest_so_far = hc.t;
+            }
+        }
+        hit
     }
 }
