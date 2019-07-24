@@ -1,17 +1,29 @@
 extern crate cgmath;
 
-use cgmath::{Vector3, Zero};
+use crate::Material;
+use cgmath::Vector3;
+use std::rc::Rc;
 
-#[derive(Copy, Clone)]
 pub struct HitRecord<T> {
     t: T,
     p: Vector3<T>,
     normal: Vector3<T>,
+    material: Rc<dyn super::Material<T>>,
 }
 
 impl<T: std::marker::Copy> HitRecord<T> {
-    pub fn new(t: T, p: Vector3<T>, normal: Vector3<T>) -> Self {
-        Self { t, p, normal }
+    pub fn new(
+        t: T,
+        p: Vector3<T>,
+        normal: Vector3<T>,
+        material: Rc<dyn super::Material<T>>,
+    ) -> Self {
+        Self {
+            t,
+            p,
+            normal,
+            material,
+        }
     }
 
     pub fn get_t(&self) -> T {
@@ -37,15 +49,9 @@ impl<T: std::marker::Copy> HitRecord<T> {
     pub fn set_normal(&mut self, normal: Vector3<T>) {
         self.normal = normal;
     }
-}
 
-impl<T: cgmath::BaseNum> Default for HitRecord<T> {
-    fn default() -> Self {
-        Self {
-            t: T::zero(),
-            p: Vector3::zero(),
-            normal: Vector3::zero(),
-        }
+    pub fn get_material(&self) -> &Rc<dyn Material<T>> {
+        &self.material
     }
 }
 
@@ -54,7 +60,7 @@ pub trait HitTable<T> {
 }
 
 pub struct HitTableList<T> {
-    list: std::vec::Vec<Box<HitTable<T>>>,
+    list: std::vec::Vec<Box<dyn HitTable<T>>>,
 }
 
 impl<T> HitTableList<T> {
@@ -62,7 +68,7 @@ impl<T> HitTableList<T> {
         HitTableList { list: vec![] }
     }
 
-    pub fn add(&mut self, ht: Box<HitTable<T>>) {
+    pub fn add(&mut self, ht: Box<dyn HitTable<T>>) {
         self.list.push(ht)
     }
 }
@@ -73,8 +79,8 @@ impl<T: cgmath::BaseNum> HitTable<T> for HitTableList<T> {
         let mut hit = None;
         for ht in self.list.iter() {
             if let Some(hc) = ht.hit(r, t.start..closest_so_far) {
-                hit = Some(hc);
                 closest_so_far = hc.t;
+                hit = Some(hc);
             }
         }
         hit
