@@ -126,13 +126,19 @@ fn main() {
         let mut pixels: Vec<Pixel> = Vec::new();
         pixels.resize(width * height, Pixel::default());
 
-        let camera = Camera::new(
-            vec3(-2.0, 2.0, 1.0),
-            vec3(0.0, 0.0, -1.0),
-            Vector3::unit_y(),
-            20.0,
-            width as f64 / height as f64,
-        );
+        let camera = {
+            let origin = vec3(3.0, 3.0, 2.0);
+            let look_at = vec3(0.0, 0.0, -1.0);
+            Camera::new(
+                origin,
+                look_at,
+                Vector3::unit_y(),
+                20.0,
+                width as f64 / height as f64,
+                2.0,
+                (origin - look_at).magnitude(),
+            )
+        };
 
         App {
             pixels,

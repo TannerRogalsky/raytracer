@@ -1,13 +1,19 @@
 extern crate cgmath;
 
 use crate::Ray;
-use cgmath::{InnerSpace, Vector3};
+use cgmath::{vec3, InnerSpace, Vector3};
+use rand::distributions::Standard;
+use rand::prelude::*;
 
 pub struct Camera<T> {
     origin: Vector3<T>,
     lower_left_corner: Vector3<T>,
     horizontal: Vector3<T>,
     vertical: Vector3<T>,
+    u: Vector3<T>,
+    v: Vector3<T>,
+    w: Vector3<T>,
+    lens_radius: T,
 }
 
 impl Camera<f64> {
@@ -17,6 +23,8 @@ impl Camera<f64> {
         up: Vector3<f64>,
         v_fov: f64,
         aspect: f64,
+        aperture: f64,
+        focus_dist: f64,
     ) -> Self {
         let theta = v_fov * std::f64::consts::PI / 180.0;
         let half_height = (theta / 2.0).tan();
@@ -28,18 +36,51 @@ impl Camera<f64> {
 
         Self {
             origin,
-            lower_left_corner: origin - half_width * u - half_height * v - w,
-            horizontal: 2.0 * half_width * u,
-            vertical: 2.0 * half_height * v,
+            lower_left_corner: origin
+                - half_width * focus_dist * u
+                - half_height * focus_dist * v
+                - focus_dist * w,
+            horizontal: 2.0 * half_width * focus_dist * u,
+            vertical: 2.0 * half_height * focus_dist * v,
+            u,
+            v,
+            w,
+            lens_radius: aperture / 2.0,
         }
     }
 }
 
-impl<T: cgmath::BaseNum> Camera<T> {
+fn rand_in_unit_disk<T>() -> Vector3<T>
+where
+    T: cgmath::BaseFloat,
+    Standard: Distribution<T>,
+{
+    let mut rng = rand::thread_rng();
+    let one = T::one();
+    let two = one + one;
+    loop {
+        let x = rng.gen::<T>();
+        let y = rng.gen::<T>();
+        let p = vec3(x, y, T::zero()) * two - vec3(one, one, T::zero());
+        if p.magnitude2() < one {
+            return p;
+        }
+    }
+}
+
+impl<T> Camera<T>
+where
+    T: cgmath::BaseFloat,
+    Standard: Distribution<T>,
+{
     pub fn ray(&self, u: T, v: T) -> Ray<T> {
+        use cgmath::ElementWise;
+
+        let rd = rand_in_unit_disk().mul_element_wise(self.lens_radius);
+        let offset = self.u.mul_element_wise(rd.x) + self.v.mul_element_wise(rd.y);
         Ray::new(
-            self.origin,
-            self.lower_left_corner + self.horizontal * u + self.vertical * v - self.origin,
+            self.origin + offset,
+            self.lower_left_corner + self.horizontal * u + self.vertical * v - self.origin - offset,
         )
     }
 }
