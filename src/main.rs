@@ -69,6 +69,71 @@ impl App {
     }
 }
 
+fn gen_world(rng: &mut ThreadRng) -> HitTableList<f64> {
+    let mut list = HitTableList::new();
+    list.add(Box::new(Sphere::new(
+        vec3(0.0, -1000.0, 0.0),
+        1000.0,
+        Rc::new(Lambertian::new(vec3(0.5, 0.5, 0.5))),
+    )));
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_mat = rng.gen::<f64>();
+            let center = vec3(
+                (a as f64) + 0.9 * rng.gen::<f64>(),
+                0.2,
+                (b as f64) + 0.9 * rng.gen::<f64>(),
+            );
+            if choose_mat < 0.8 {
+                list.add(Box::new(Sphere::new(
+                    center,
+                    0.2,
+                    Rc::new(Lambertian::new(vec3(
+                        rng.gen::<f64>() * rng.gen::<f64>(),
+                        rng.gen::<f64>() * rng.gen::<f64>(),
+                        rng.gen::<f64>() * rng.gen::<f64>(),
+                    ))),
+                )));
+            } else if choose_mat < 0.95 {
+                list.add(Box::new(Sphere::new(
+                    center,
+                    0.2,
+                    Rc::new(Metal::new(
+                        vec3(
+                            0.5 * (1.0 + rng.gen::<f64>()),
+                            0.5 * (1.0 + rng.gen::<f64>()),
+                            0.5 * (1.0 + rng.gen::<f64>()),
+                        ),
+                        0.5 * rng.gen::<f64>(),
+                    )),
+                )));
+            } else {
+                list.add(Box::new(Sphere::new(
+                    center,
+                    0.2,
+                    Rc::new(Dielectric::new(1.5)),
+                )));
+            }
+        }
+    }
+    list.add(Box::new(Sphere::new(
+        vec3(0.0, 1.0, 0.0),
+        1.0,
+        Rc::new(Dielectric::new(1.5)),
+    )));
+    list.add(Box::new(Sphere::new(
+        vec3(-4.0, 1.0, 0.0),
+        1.0,
+        Rc::new(Lambertian::new(vec3(0.4, 0.2, 0.1))),
+    )));
+    list.add(Box::new(Sphere::new(
+        vec3(4.0, 1.0, 0.0),
+        1.0,
+        Rc::new(Metal::new(vec3(0.7, 0.6, 0.5), 0.0)),
+    )));
+    list
+}
+
 fn main() {
     let el = EventLoop::new();
     let wb = WindowBuilder::new()
@@ -91,52 +156,23 @@ fn main() {
     println!("Window inner size: {}, {}", width, height);
 
     let mut app = {
-        let mut world = HitTableList::new();
-        world.add(Box::new(Sphere::new(
-            vec3(0.0, 0.0, -1.0),
-            0.5,
-            Rc::new(Lambertian::new(vec3(0.1, 0.2, 0.5))),
-        )));
-        world.add(Box::new(Sphere::new(
-            vec3(0.0, -100.5, -1.0),
-            100.0,
-            Rc::new(Lambertian::new(vec3(0.8, 0.8, 0.0))),
-        )));
-        world.add(Box::new(Sphere::new(
-            vec3(1.0, 0.0, -1.0),
-            0.5,
-            Rc::new(Metal::new(vec3(0.8, 0.6, 0.2), 0.3)),
-        )));
-        world.add(Box::new(Sphere::new(
-            vec3(-1.0, 0.0, -1.0),
-            0.5,
-            Rc::new(Dielectric::new(1.5)),
-        )));
-        //        world.add(Box::new(Sphere::new(
-        //            vec3(-1.0, 0.0, -1.0),
-        //            -0.45,
-        //            Rc::new(Dielectric::new(1.5)),
-        //        )));
-        //        world.add(Box::new(Sphere::new(
-        //            vec3(-1.0, 0.0, -1.0),
-        //            0.5,
-        //            Rc::new(Metal::new(vec3(0.8, 0.8, 0.8), 1.0)),
-        //        )));
+        let mut rng = rand::thread_rng();
+        let world = gen_world(&mut rng);
 
         let mut pixels: Vec<Pixel> = Vec::new();
         pixels.resize(width * height, Pixel::default());
 
         let camera = {
-            let origin = vec3(3.0, 3.0, 2.0);
-            let look_at = vec3(0.0, 0.0, -1.0);
+            let origin = vec3(13.0, 2.0, 3.0);
+            let look_at = vec3(0.0, 0.0, 0.0);
             Camera::new(
                 origin,
                 look_at,
                 Vector3::unit_y(),
                 20.0,
                 width as f64 / height as f64,
-                2.0,
-                (origin - look_at).magnitude(),
+                0.1,
+                10.0,
             )
         };
 
@@ -144,7 +180,7 @@ fn main() {
             pixels,
             world,
             camera,
-            rng: rand::thread_rng(),
+            rng,
         }
     };
     app.draw(width, height);
