@@ -4,18 +4,9 @@ use cgmath::{vec3, ElementWise, InnerSpace, Vector3};
 use glutin::event::{Event, VirtualKeyCode, WindowEvent};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::WindowBuilder;
-use glutin::{ContextBuilder, PossiblyCurrent, WindowedContext};
+use glutin::ContextBuilder;
 use rand::prelude::*;
 use std::rc::Rc;
-
-fn inner_size(windowed_context: &WindowedContext<PossiblyCurrent>) -> (usize, usize) {
-    let dpi_factor = windowed_context.window().hidpi_factor();
-    let size = windowed_context
-        .window()
-        .inner_size()
-        .to_physical(dpi_factor);
-    (size.width as usize, size.height as usize)
-}
 
 struct App {
     pixels: Vec<Pixel>,
@@ -135,10 +126,18 @@ fn gen_world(rng: &mut ThreadRng) -> HitTableList<f64> {
 }
 
 fn main() {
+    const WIDTH: usize = 400;
+    const HEIGHT: usize = 200;
+    const WINDOW_SCALE: f64 = 1.0;
+
     let el = EventLoop::new();
     let wb = WindowBuilder::new()
         .with_title("A fantastic window!")
-        .with_inner_size(glutin::dpi::LogicalSize::new(400.0 * 1.0, 200.0 * 1.0));
+        .with_resizable(false)
+        .with_inner_size(glutin::dpi::LogicalSize::new(
+            WIDTH as f64 * WINDOW_SCALE,
+            HEIGHT as f64 * WINDOW_SCALE,
+        ));
 
     let windowed_context = {
         let windowed_context = ContextBuilder::new().build_windowed(wb, &el).unwrap();
@@ -152,15 +151,12 @@ fn main() {
 
     let gl = support::load(&windowed_context.context());
 
-    let (width, height) = inner_size(&windowed_context);
-    println!("Window inner size: {}, {}", width, height);
-
     let mut app = {
         let mut rng = rand::thread_rng();
         let world = gen_world(&mut rng);
 
         let mut pixels: Vec<Pixel> = Vec::new();
-        pixels.resize(width * height, Pixel::default());
+        pixels.resize(WIDTH * HEIGHT, Pixel::default());
 
         let camera = {
             let origin = vec3(13.0, 2.0, 3.0);
@@ -170,7 +166,7 @@ fn main() {
                 look_at,
                 Vector3::unit_y(),
                 20.0,
-                width as f64 / height as f64,
+                WIDTH as f64 / HEIGHT as f64,
                 0.1,
                 10.0,
             )
@@ -183,10 +179,10 @@ fn main() {
             rng,
         }
     };
-    app.draw(width, height);
+    app.draw(WIDTH, HEIGHT);
 
-    let texture = gl.new_texture(&app.pixels, width, height);
-    gl.write_pixels(texture, &app.pixels, width, height);
+    let texture = gl.new_texture(&app.pixels, WIDTH, HEIGHT);
+    gl.write_pixels(texture, &app.pixels, WIDTH, HEIGHT);
     gl.draw_frame([1.0, 0.5, 0.7, 1.0]);
     windowed_context.swap_buffers().unwrap();
 
@@ -196,18 +192,7 @@ fn main() {
         match event {
             Event::LoopDestroyed => return,
             Event::WindowEvent { ref event, .. } => match event {
-                WindowEvent::Resized(logical_size) => {
-                    let dpi_factor = windowed_context.window().hidpi_factor();
-                    let size = logical_size.to_physical(dpi_factor);
-                    let width = size.width as usize;
-                    let height = size.height as usize;
-                    windowed_context.resize(size);
-                    app.pixels.resize(width * height, Pixel::default());
-                }
                 WindowEvent::RedrawRequested => {
-                    //                    let (width, height) = inner_size(&windowed_context);
-                    //                    app.draw(width, height);
-                    //                    gl.write_pixels(texture, &app.pixels, width, height);
                     gl.draw_frame([1.0, 0.5, 0.7, 1.0]);
                     windowed_context.swap_buffers().unwrap();
                 }
