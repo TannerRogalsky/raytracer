@@ -126,10 +126,18 @@ fn main() {
         let mut pixels: Vec<Pixel> = Vec::new();
         pixels.resize(width * height, Pixel::default());
 
+        let camera = Camera::new(
+            vec3(-2.0, 2.0, 1.0),
+            vec3(0.0, 0.0, -1.0),
+            Vector3::unit_y(),
+            20.0,
+            width as f64 / height as f64,
+        );
+
         App {
             pixels,
             world,
-            camera: Camera::new(),
+            camera,
             rng: rand::thread_rng(),
         }
     };

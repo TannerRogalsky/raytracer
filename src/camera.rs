@@ -1,7 +1,7 @@
 extern crate cgmath;
 
 use crate::Ray;
-use cgmath::{vec3, Vector3};
+use cgmath::{InnerSpace, Vector3};
 
 pub struct Camera<T> {
     origin: Vector3<T>,
@@ -11,12 +11,26 @@ pub struct Camera<T> {
 }
 
 impl Camera<f64> {
-    pub fn new() -> Self {
+    pub fn new(
+        origin: Vector3<f64>,
+        look_at: Vector3<f64>,
+        up: Vector3<f64>,
+        v_fov: f64,
+        aspect: f64,
+    ) -> Self {
+        let theta = v_fov * std::f64::consts::PI / 180.0;
+        let half_height = (theta / 2.0).tan();
+        let half_width = aspect * half_height;
+
+        let w = (origin - look_at).normalize();
+        let u = up.cross(w).normalize();
+        let v = w.cross(u);
+
         Self {
-            origin: vec3(0.0, 0.0, 0.0),
-            lower_left_corner: vec3(-2.0, -1.0, -1.0),
-            horizontal: vec3(4.0, 0.0, 0.0),
-            vertical: vec3(0.0, 2.0, 0.0),
+            origin,
+            lower_left_corner: origin - half_width * u - half_height * v - w,
+            horizontal: 2.0 * half_width * u,
+            vertical: 2.0 * half_height * v,
         }
     }
 }
