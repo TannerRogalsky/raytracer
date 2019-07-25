@@ -80,3 +80,72 @@ where
         }
     }
 }
+
+pub struct Dielectric<T> {
+    ref_idx: T,
+}
+
+impl<T> Dielectric<T> {
+    pub fn new(ref_idx: T) -> Self {
+        Self { ref_idx }
+    }
+}
+
+fn refract<T>(v: &Vector3<T>, n: &Vector3<T>, ni_over_nt: T) -> Option<Vector3<T>>
+where
+    T: cgmath::BaseFloat,
+{
+    let uv = v.normalize();
+    let dt = uv.dot(*n);
+    let discriminant = T::one() - ni_over_nt * ni_over_nt * (T::one() - dt * dt);
+    if discriminant > T::zero() {
+        Some((uv - n * dt) * ni_over_nt - n * discriminant.sqrt())
+    } else {
+        None
+    }
+}
+
+fn schlick<T: cgmath::BaseNum>(cosine: T, ref_idx: T) -> T {
+    let r1 = (T::one() - ref_idx) / (T::one() + ref_idx);
+    let r2 = r1 * r1;
+    let r5 = r2 + (T::one() - r2) * (T::one() - cosine);
+    r5 * r5 * r5 * r5 * r5
+}
+
+impl<T> Material<T> for Dielectric<T>
+where
+    T: cgmath::BaseFloat,
+    Standard: Distribution<T>,
+{
+    fn scatter(&self, r: &Ray<T>, rec: &HitRecord<T>) -> Option<(Vector3<T>, Ray<T>)> {
+        let reflected = reflect(*r.direction(), *rec.get_normal());
+        let normal = *rec.get_normal();
+
+        let (outward_normal, ni_over_nt, cosine) = if r.direction().dot(normal) > T::zero() {
+            (
+                -normal,
+                self.ref_idx,
+                self.ref_idx * r.direction().dot(normal) / r.direction().magnitude(),
+            )
+        } else {
+            (
+                *rec.get_normal(),
+                T::one() / self.ref_idx,
+                -r.direction().dot(normal) / r.direction().magnitude(),
+            )
+        };
+
+        let refracted = refract(r.direction(), &outward_normal, ni_over_nt);
+        let reflect_prob = match refracted {
+            None => T::one(),
+            Some(_) => schlick(cosine, self.ref_idx),
+        };
+
+        let attenuation = vec3(T::one(), T::one(), T::one());
+        if thread_rng().gen::<T>() < reflect_prob {
+            Some((attenuation, Ray::new(*rec.get_p(), reflected)))
+        } else {
+            Some((attenuation, Ray::new(*rec.get_p(), refracted.unwrap())))
+        }
+    }
+}

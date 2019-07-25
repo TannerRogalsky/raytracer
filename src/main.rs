@@ -95,7 +95,7 @@ fn main() {
         world.add(Box::new(Sphere::new(
             vec3(0.0, 0.0, -1.0),
             0.5,
-            Rc::new(Lambertian::new(vec3(0.8, 0.3, 0.3))),
+            Rc::new(Lambertian::new(vec3(0.1, 0.2, 0.5))),
         )));
         world.add(Box::new(Sphere::new(
             vec3(0.0, -100.5, -1.0),
@@ -110,8 +110,18 @@ fn main() {
         world.add(Box::new(Sphere::new(
             vec3(-1.0, 0.0, -1.0),
             0.5,
-            Rc::new(Metal::new(vec3(0.8, 0.8, 0.8), 1.0)),
+            Rc::new(Dielectric::new(1.5)),
         )));
+        //        world.add(Box::new(Sphere::new(
+        //            vec3(-1.0, 0.0, -1.0),
+        //            -0.45,
+        //            Rc::new(Dielectric::new(1.5)),
+        //        )));
+        //        world.add(Box::new(Sphere::new(
+        //            vec3(-1.0, 0.0, -1.0),
+        //            0.5,
+        //            Rc::new(Metal::new(vec3(0.8, 0.8, 0.8), 1.0)),
+        //        )));
 
         let mut pixels: Vec<Pixel> = Vec::new();
         pixels.resize(width * height, Pixel::default());

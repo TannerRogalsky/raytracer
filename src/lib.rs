@@ -8,7 +8,7 @@ pub mod support;
 
 pub use camera::Camera;
 pub use hit_table::{HitRecord, HitTable, HitTableList};
-pub use material::{Lambertian, Material, Metal};
+pub use material::{Dielectric, Lambertian, Material, Metal};
 pub use pixel::Pixel;
 pub use ray::Ray;
 pub use sphere::Sphere;
