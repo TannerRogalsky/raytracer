@@ -49,11 +49,12 @@ where
 
 pub struct Metal<T> {
     albedo: Vector3<T>,
+    fuzz: T,
 }
 
 impl<T> Metal<T> {
-    pub fn new(albedo: Vector3<T>) -> Self {
-        Self { albedo }
+    pub fn new(albedo: Vector3<T>, fuzz: T) -> Self {
+        Self { albedo, fuzz }
     }
 }
 
@@ -67,10 +68,11 @@ where
 impl<T> Material<T> for Metal<T>
 where
     T: cgmath::BaseFloat,
+    Standard: Distribution<T>,
 {
     fn scatter(&self, r: &Ray<T>, rec: &HitRecord<T>) -> Option<(Vector3<T>, Ray<T>)> {
         let reflected = reflect(r.direction().normalize(), *rec.get_normal());
-        let scattered = Ray::new(*rec.get_p(), reflected);
+        let scattered = Ray::new(*rec.get_p(), reflected + rand_in_unit_sphere() * self.fuzz);
         if scattered.direction().dot(*rec.get_normal()) > T::zero() {
             Some((self.albedo, scattered))
         } else {

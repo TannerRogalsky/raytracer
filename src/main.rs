@@ -105,12 +105,12 @@ fn main() {
         world.add(Box::new(Sphere::new(
             vec3(1.0, 0.0, -1.0),
             0.5,
-            Rc::new(Metal::new(vec3(0.8, 0.6, 0.2))),
+            Rc::new(Metal::new(vec3(0.8, 0.6, 0.2), 0.3)),
         )));
         world.add(Box::new(Sphere::new(
             vec3(-1.0, 0.0, -1.0),
             0.5,
-            Rc::new(Metal::new(vec3(0.8, 0.8, 0.8))),
+            Rc::new(Metal::new(vec3(0.8, 0.8, 0.8), 1.0)),
         )));
 
         let mut pixels: Vec<Pixel> = Vec::new();
