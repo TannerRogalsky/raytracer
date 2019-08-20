@@ -1,62 +1,87 @@
 use raytracer_in_a_weekend::*;
 
+extern crate crossbeam;
+
 use cgmath::{vec3, ElementWise, InnerSpace, Vector3};
 use glutin::event::{Event, VirtualKeyCode, WindowEvent};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::WindowBuilder;
 use glutin::ContextBuilder;
 use rand::prelude::*;
-use std::rc::Rc;
+use std::sync::Arc;
 
 struct App {
     pixels: Vec<Pixel>,
     world: HitTableList<f64>,
     camera: Camera<f64>,
-    rng: ThreadRng,
 }
 
 impl App {
-    fn color(&self, r: &Ray<f64>, depth: usize) -> Vector3<f64> {
-        if depth < 50 {
-            match self.world.hit(r, 0.001..std::f64::MAX) {
-                None => {
-                    let unit_direction = r.direction().normalize();
-                    let t = 0.5 * (unit_direction.y + 1.0);
-                    (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0)
-                }
-                Some(hit) => {
-                    if let Some((attenuation, ray)) = hit.get_material().scatter(r, &hit) {
-                        attenuation.mul_element_wise(self.color(&ray, depth + 1))
-                    } else {
-                        vec3(0.0, 0.0, 0.0)
-                    }
-                }
-            }
-        } else {
-            vec3(0.0, 0.0, 0.0)
-        }
-    }
-
     fn draw(&mut self, width: usize, height: usize) {
         const AA_STEPS: usize = 100;
         let mut i = 0usize;
-        for y in (0..height).rev() {
-            for x in 0..width {
-                let col = (0..AA_STEPS).fold(vec3(0.0, 0.0, 0.0), |acc, _i| {
-                    let u = (x as f64 + self.rng.gen::<f64>()) / (width as f64);
-                    let v = (y as f64 + self.rng.gen::<f64>()) / (height as f64);
+        let (send, recv) = crossbeam::bounded(width * height);
 
-                    let r = self.camera.ray(u, v);
-                    acc + self.color(&r, 0)
-                }) / AA_STEPS as f64;
+        crossbeam::scope(|scope| {
+            let world = &self.world;
+            let camera = &self.camera;
 
-                self.pixels[i].r = (col.x.sqrt() * 255.99) as u8;
-                self.pixels[i].g = (col.y.sqrt() * 255.99) as u8;
-                self.pixels[i].b = (col.z.sqrt() * 255.99) as u8;
+            for y in (0..height).rev() {
+                for x in 0..width {
+                    let send = send.clone();
+                    scope.spawn(move |_| {
+                        let mut rng = rand::thread_rng();
+                        let col = (0..AA_STEPS)
+                            .map(|_i| {
+                                let u = (x as f64 + rng.gen::<f64>()) / (width as f64);
+                                let v = (y as f64 + rng.gen::<f64>()) / (height as f64);
+                                camera.ray(u, v)
+                            })
+                            .fold(vec3(0.0, 0.0, 0.0), |acc, ray| acc + color(world, &ray, 0))
+                            / AA_STEPS as f64;
+                        send.send((
+                            i,
+                            Pixel {
+                                r: (col.x.sqrt() * 255.99) as u8,
+                                g: (col.y.sqrt() * 255.99) as u8,
+                                b: (col.z.sqrt() * 255.99) as u8,
+                            },
+                        ))
+                        .unwrap()
+                    });
 
-                i += 1;
+                    i += 1;
+                }
+            }
+        })
+        .expect("A child thread panicked");
+
+        drop(send);
+
+        for (i, pixel) in recv {
+            self.pixels[i] = pixel;
+        }
+    }
+}
+
+fn color(world: &HitTableList<f64>, r: &Ray<f64>, depth: usize) -> Vector3<f64> {
+    if depth < 50 {
+        match world.hit(r, 0.001..std::f64::MAX) {
+            None => {
+                let unit_direction = r.direction().normalize();
+                let t = 0.5 * (unit_direction.y + 1.0);
+                (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0)
+            }
+            Some(hit) => {
+                if let Some((attenuation, ray)) = hit.get_material().scatter(r, &hit) {
+                    attenuation.mul_element_wise(color(world, &ray, depth + 1))
+                } else {
+                    vec3(0.0, 0.0, 0.0)
+                }
             }
         }
+    } else {
+        vec3(0.0, 0.0, 0.0)
     }
 }
 
@@ -65,7 +90,7 @@ fn gen_world(rng: &mut ThreadRng) -> HitTableList<f64> {
     list.add(Box::new(Sphere::new(
         vec3(0.0, -1000.0, 0.0),
         1000.0,
-        Rc::new(Lambertian::new(vec3(0.5, 0.5, 0.5))),
+        Arc::new(Lambertian::new(vec3(0.5, 0.5, 0.5))),
     )));
     for a in -11..11 {
         for b in -11..11 {
@@ -79,7 +104,7 @@ fn gen_world(rng: &mut ThreadRng) -> HitTableList<f64> {
                 list.add(Box::new(Sphere::new(
                     center,
                     0.2,
-                    Rc::new(Lambertian::new(vec3(
+                    Arc::new(Lambertian::new(vec3(
                         rng.gen::<f64>() * rng.gen::<f64>(),
                         rng.gen::<f64>() * rng.gen::<f64>(),
                         rng.gen::<f64>() * rng.gen::<f64>(),
@@ -89,7 +114,7 @@ fn gen_world(rng: &mut ThreadRng) -> HitTableList<f64> {
                 list.add(Box::new(Sphere::new(
                     center,
                     0.2,
-                    Rc::new(Metal::new(
+                    Arc::new(Metal::new(
                         vec3(
                             0.5 * (1.0 + rng.gen::<f64>()),
                             0.5 * (1.0 + rng.gen::<f64>()),
@@ -102,7 +127,7 @@ fn gen_world(rng: &mut ThreadRng) -> HitTableList<f64> {
                 list.add(Box::new(Sphere::new(
                     center,
                     0.2,
-                    Rc::new(Dielectric::new(1.5)),
+                    Arc::new(Dielectric::new(1.5)),
                 )));
             }
         }
@@ -110,25 +135,25 @@ fn gen_world(rng: &mut ThreadRng) -> HitTableList<f64> {
     list.add(Box::new(Sphere::new(
         vec3(0.0, 1.0, 0.0),
         1.0,
-        Rc::new(Dielectric::new(1.5)),
+        Arc::new(Dielectric::new(1.5)),
     )));
     list.add(Box::new(Sphere::new(
         vec3(-4.0, 1.0, 0.0),
         1.0,
-        Rc::new(Lambertian::new(vec3(0.4, 0.2, 0.1))),
+        Arc::new(Lambertian::new(vec3(0.4, 0.2, 0.1))),
     )));
     list.add(Box::new(Sphere::new(
         vec3(4.0, 1.0, 0.0),
         1.0,
-        Rc::new(Metal::new(vec3(0.7, 0.6, 0.5), 0.0)),
+        Arc::new(Metal::new(vec3(0.7, 0.6, 0.5), 0.0)),
     )));
     list
 }
 
 fn main() {
-    const WIDTH: usize = 400;
-    const HEIGHT: usize = 200;
-    const WINDOW_SCALE: f64 = 1.0;
+    const WIDTH: usize = 200;
+    const HEIGHT: usize = 100;
+    const WINDOW_SCALE: f64 = 4.0;
 
     let el = EventLoop::new();
     let wb = WindowBuilder::new()
@@ -176,10 +201,12 @@ fn main() {
             pixels,
             world,
             camera,
-            rng,
         }
     };
+    let start = std::time::Instant::now();
     app.draw(WIDTH, HEIGHT);
+    let end = std::time::Instant::now();
+    println!("Frame took {:?}ms", (end - start).as_millis());
 
     let texture = gl.new_texture(&app.pixels, WIDTH, HEIGHT);
     gl.write_pixels(texture, &app.pixels, WIDTH, HEIGHT);

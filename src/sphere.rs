@@ -3,17 +3,21 @@ extern crate cgmath;
 use super::{HitRecord, HitTable, Material, Ray};
 use cgmath::InnerSpace;
 use std::ops::Range;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct Sphere<T> {
     center: cgmath::Vector3<T>,
     radius: T,
     // this could, theoretically, be a reference but doing the lifetimes sounds unfun
-    material: Rc<dyn Material<T>>,
+    material: Arc<dyn Material<T> + Sync + Send>,
 }
 
 impl<T> Sphere<T> {
-    pub fn new(center: cgmath::Vector3<T>, radius: T, material: Rc<dyn Material<T>>) -> Self {
+    pub fn new(
+        center: cgmath::Vector3<T>,
+        radius: T,
+        material: Arc<dyn Material<T> + Sync + Send>,
+    ) -> Self {
         Self {
             center,
             radius,
@@ -26,7 +30,7 @@ impl<T: cgmath::BaseNum> Sphere<T> {
     pub fn hit_record(&self, ray: &Ray<T>, t: T) -> HitRecord<T> {
         let p = ray.point_at_parameter(t);
         let normal = (p - self.center) / self.radius;
-        HitRecord::new(t, p, normal, Rc::clone(&self.material))
+        HitRecord::new(t, p, normal, Arc::clone(&self.material))
     }
 }
 
