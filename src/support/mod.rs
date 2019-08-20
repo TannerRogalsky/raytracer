@@ -118,11 +118,11 @@ pub fn load(gl_context: &glutin::Context<PossiblyCurrent>) -> Gl {
 }
 
 impl Gl {
-    pub fn new_texture(&self, pixels: &Vec<Pixel>, width: usize, height: usize) -> u32 {
+    pub fn new_texture(&self) -> u32 {
         unsafe {
             let mut texture = 0u32;
             self.gl.GenTextures(1, &mut texture as *mut u32);
-            self.write_pixels(texture, pixels, width, height);
+            self.gl.BindTexture(gl::TEXTURE_2D, texture);
             self.gl.TexParameteri(
                 gl::TEXTURE_2D,
                 gl::TEXTURE_MIN_FILTER,

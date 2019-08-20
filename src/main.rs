@@ -208,7 +208,7 @@ fn main() {
     let end = std::time::Instant::now();
     println!("Frame took {:?}ms", (end - start).as_millis());
 
-    let texture = gl.new_texture(&app.pixels, WIDTH, HEIGHT);
+    let texture = gl.new_texture();
     gl.write_pixels(texture, &app.pixels, WIDTH, HEIGHT);
     gl.draw_frame([1.0, 0.5, 0.7, 1.0]);
     windowed_context.swap_buffers().unwrap();
