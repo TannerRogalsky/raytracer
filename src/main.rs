@@ -6,14 +6,18 @@ use cgmath::{vec3, ElementWise, InnerSpace, Vector3};
 use glutin::event::{Event, VirtualKeyCode, WindowEvent};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::WindowBuilder;
-use glutin::ContextBuilder;
+use glutin::{ContextBuilder, PossiblyCurrent, WindowedContext};
 use rand::prelude::*;
+use raytracer_in_a_weekend::support::Gl;
 use std::sync::Arc;
 
 struct App {
     pixels: Vec<Pixel>,
     world: HitTableList<f64>,
     camera: Camera<f64>,
+    texture: u32,
+    gl: Gl,
+    windowed_context: WindowedContext<PossiblyCurrent>,
 }
 
 impl App {
@@ -61,6 +65,13 @@ impl App {
         for (i, pixel) in recv {
             self.pixels[i] = pixel;
         }
+    }
+
+    pub fn flush(&self, width: usize, height: usize) {
+        self.gl
+            .write_pixels(self.texture, &self.pixels, width, height);
+        self.gl.draw_frame([1.0, 0.5, 0.7, 1.0]);
+        self.windowed_context.swap_buffers().unwrap();
     }
 }
 
@@ -201,6 +212,9 @@ fn main() {
             pixels,
             world,
             camera,
+            texture: gl.new_texture(),
+            gl,
+            windowed_context,
         }
     };
     let start = std::time::Instant::now();
@@ -208,10 +222,7 @@ fn main() {
     let end = std::time::Instant::now();
     println!("Frame took {:?}ms", (end - start).as_millis());
 
-    let texture = gl.new_texture();
-    gl.write_pixels(texture, &app.pixels, WIDTH, HEIGHT);
-    gl.draw_frame([1.0, 0.5, 0.7, 1.0]);
-    windowed_context.swap_buffers().unwrap();
+    app.flush(WIDTH, HEIGHT);
 
     el.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -220,8 +231,7 @@ fn main() {
             Event::LoopDestroyed => return,
             Event::WindowEvent { ref event, .. } => match event {
                 WindowEvent::RedrawRequested => {
-                    gl.draw_frame([1.0, 0.5, 0.7, 1.0]);
-                    windowed_context.swap_buffers().unwrap();
+                    app.flush(WIDTH, HEIGHT);
                 }
                 WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                 WindowEvent::KeyboardInput { input, .. } => {
